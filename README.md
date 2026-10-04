@@ -1,11 +1,11 @@
 # 🎓 ShouldISkipClass.ai
 
-**An open-source AI-powered college attendance advisor that runs 100% locally.**
+**An open-source AI-powered college attendance advisor that runs 100% locally (V1) or Hosted (V2) based on your requirements**
 
-Built with **Gemma** (Google's open-weight model) via **Ollama** — your academic data never leaves your machine.
+Built with **Gemma** (Google's open-weight model) via **Ollama** (V1) or **Google AI Studio** (V2) — your academic data never leaves your machine.
 
 ![Python](https://img.shields.io/badge/Python-3.7+-blue?logo=python)
-![Gemma](https://img.shields.io/badge/AI-Gemma%203-orange?logo=google)python app.py
+![Gemma](https://img.shields.io/badge/AI-Gemma%203-orange?logo=google)
 ![Ollama](https://img.shields.io/badge/Inference-Ollama-black)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
