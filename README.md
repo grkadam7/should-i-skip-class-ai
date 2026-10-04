@@ -46,7 +46,7 @@ Tell it your attendance percentage, teacher strictness, upcoming tests, and more
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/yourusername/should-i-skip-class-ai.git
+git clone https://github.com/grkadam7/should-i-skip-class-ai.git
 cd should-i-skip-class-ai
 
 # 2. Install Python dependencies
@@ -71,6 +71,8 @@ Open **http://localhost:5000** in your browser and start analyzing! 🎉
 - **Backend:** Python + Flask
 - **Frontend:** HTML + CSS + Vanilla JS
 - **Data Storage:** None — we don't store anything!
+- **Testing:** Pytest (automated prompt and sanitization coverage)
+- **Security:** Built-in prompt injection sanitization against malicious inputs
 
 ## 📸 Screenshots
 
