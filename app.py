@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify
 import requests
 import json
+import os
 
 app = Flask(__name__)
 
@@ -183,4 +184,4 @@ if __name__ == '__main__':
     print("       Running at http://localhost:5000              ")
     print("  ===================================================")
     print("")
-    app.run(debug=True, port=5000)
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
