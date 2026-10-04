@@ -1,66 +1,83 @@
 from flask import Flask, render_template, request, jsonify
 from google import genai
+from google.genai import types
 import json
 import os
 
 app = Flask(__name__)
 
-# Google AI Studio API key
+# ---------------------------------------------------------
+# Google AI Studio / Gemma Configuration
+# ---------------------------------------------------------
+
 api_key = os.environ.get("GEMINI_API_KEY")
 
-# Gemma model available through the Gemini API
 MODEL_NAME = "gemma-4-26b-a4b-it"
 
-# Initialize Gemini client
-client = genai.Client(api_key=api_key) if api_key else None
+client = None
 
+if api_key:
+    client = genai.Client(
+        api_key=api_key,
+        http_options=types.HttpOptions(
+            timeout=30000
+        )
+    )
+
+
+# ---------------------------------------------------------
+# System Prompt
+# ---------------------------------------------------------
 
 def build_system_prompt():
-    """Build the system prompt for Gemma to act as an attendance advisor."""
-    return """You are "SkipClass AI", a witty, realistic, and brutally honest college attendance advisor.
+    return """You are SkipClass AI, a witty and brutally honest college attendance advisor.
 
-Your mission is to give students realistic advice on whether to bunk/skip a class based on their schedule and circumstances.
+Analyze whether a student should skip a class.
 
-You MUST analyze the student's situation and respond in this EXACT JSON format:
+Return ONLY valid JSON in exactly this structure:
 
 {
-    "verdict": "SKIP" or "ATTEND" or "RISKY SKIP",
-    "risk_score": <number from 1-10>,
-    "short_reason": "<witty/funny one-liner summary>",
-    "detailed_analysis": "<2-3 sentences explaining the trade-offs>",
-    "consequences": ["<consequence 1>", "<consequence 2>"],
-    "tips": ["<practical tip 1>", "<practical tip 2>"]
+  "verdict": "SKIP" or "ATTEND" or "RISKY SKIP",
+  "risk_score": 1-10,
+  "short_reason": "one witty sentence",
+  "detailed_analysis": "2 short sentences",
+  "consequences": ["consequence 1", "consequence 2"],
+  "tips": ["tip 1", "tip 2"]
 }
 
-Decision Logic & Factors:
+Consider:
 
-1. PROXY AVAILABILITY:
-If they have a reliable friend to mark proxy attendance, risk score drops significantly.
+- Current attendance vs minimum required
+- Classes remaining
+- Proxy availability
+- Teacher strictness
+- Course credits
+- Class timing
+- Full-day schedule and gaps
+- Upcoming tests/quizzes
+- Subject difficulty
+- Current grade situation
 
-2. DAY SCHEDULE / GAPS:
-If this is their ONLY class of the day, skipping lets them stay home all day.
-If there is a massive 3-hour gap before or after the class, skipping may save useless waiting time on campus.
+Rules:
 
-3. CLASS TIMING:
-8:00 AM early morning classes have a built-in sleep tax.
+- If attendance is below the minimum, strongly favor ATTEND.
+- If there is an upcoming test/quiz, strongly increase risk.
+- 4-credit core subjects matter more than low-credit electives.
+- Strict teachers with no proxy increase risk.
+- Very early classes have a "sleep tax".
+- Large schedule gaps can make skipping more attractive.
+- Reliable proxy availability can reduce risk.
+- Be realistic and humorous.
+- Do not invent information.
 
-4. COURSE CREDITS:
-4-credit core subjects are more important than 1-2 credit electives/labs.
+OUTPUT JSON ONLY."""
 
-5. SAFE SKIP:
-High attendance buffer (>5%), no upcoming tests, proxy available OR huge schedule gap.
 
-6. MUST ATTEND:
-Attendance below minimum threshold, OR upcoming test/quiz, OR 4-credit subject with strict teacher and NO proxy.
-
-Be humorous, relatable, and use college slang naturally:
-bunk, proxy, sleep tax, mass bunk, attendance short, etc.
-
-OUTPUT VALID JSON ONLY."""
-
+# ---------------------------------------------------------
+# Input Sanitization
+# ---------------------------------------------------------
 
 def sanitize_input(text):
-    """Basic sanitization to prevent prompt injection and limit length."""
     if not isinstance(text, str):
         return str(text)
 
@@ -82,8 +99,11 @@ def sanitize_input(text):
     return text[:1000]
 
 
+# ---------------------------------------------------------
+# User Prompt
+# ---------------------------------------------------------
+
 def build_user_prompt(data):
-    """Build the user prompt from form data."""
 
     safe_schedule = sanitize_input(
         data.get("day_schedule", "")
@@ -93,51 +113,56 @@ def build_user_prompt(data):
         data.get("test_details", "Soon")
     )
 
-    return f"""Here is my detailed class & day schedule context:
+    return f"""Student attendance situation:
 
-📊 ATTENDANCE STATUS:
-- Current attendance: {data.get('attendance', 0)}%
+ATTENDANCE
+- Current: {data.get('attendance', 0)}%
 - Minimum required: {data.get('min_attendance', 0)}%
-- Classes remaining this semester: {data.get('classes_remaining', 0)}
+- Classes remaining: {data.get('classes_remaining', 0)}
 
-🎓 COURSE & TEACHER INTEL:
-- Course Credits: {sanitize_input(data.get('course_credits', ''))} Credits
-  (1-2 = Low weight, 3-4 = Core Heavy)
-- Teacher Strictness: {data.get('teacher_strictness', 5)}/10
-- Proxy Friend Available?: {sanitize_input(data.get('proxy_status', ''))}
+COURSE / TEACHER
+- Credits: {sanitize_input(data.get('course_credits', ''))}
+- Teacher strictness: {data.get('teacher_strictness', 5)}/10
+- Proxy: {sanitize_input(data.get('proxy_status', ''))}
 
-⏰ SCHEDULE & TIMING CONTEXT:
-- Class Time: {sanitize_input(data.get('class_time', ''))}
-- Day Schedule Context: {safe_schedule}
+SCHEDULE
+- Target class: {sanitize_input(data.get('class_time', ''))}
+- Full day: {safe_schedule}
 
-📝 UPCOMING EVALUATIONS:
-- Test/Quiz coming up:
-  {"Yes - " + safe_test if data.get('has_test') else "No"}
+EVALUATION
+- Upcoming test: {"Yes - " + safe_test if data.get('has_test') else "No"}
 
-📚 CLASS TYPE & PERFORMANCE:
+STUDENT
 - Class type: {sanitize_input(data.get('class_type', ''))}
-- Subject difficulty (for me): {data.get('difficulty', 5)}/10
-- My current grade situation: {sanitize_input(data.get('grade_situation', ''))}
+- Subject difficulty: {data.get('difficulty', 5)}/10
+- Grade situation: {sanitize_input(data.get('grade_situation', ''))}
 
+Question:
 Should I skip this class?
 
-Analyze ALL the factors and give me your verdict."""
+Give the JSON verdict."""
 
+
+# ---------------------------------------------------------
+# Main Page
+# ---------------------------------------------------------
 
 @app.route("/")
 def index():
-    """Serve the main page."""
     return render_template("index.html")
 
 
+# ---------------------------------------------------------
+# AI Analysis
+# ---------------------------------------------------------
+
 @app.route("/api/analyze", methods=["POST"])
 def analyze():
-    """Analyze whether the student should skip class using Gemma."""
 
     if not client:
         return jsonify({
-            "error": "Gemma API is not configured.",
-            "details": "GEMINI_API_KEY is missing."
+            "error": "Gemma AI is not configured.",
+            "details": "GEMINI_API_KEY is missing on the server."
         }), 503
 
     data = request.get_json(silent=True)
@@ -151,30 +176,39 @@ def analyze():
     user_prompt = build_user_prompt(data)
 
     try:
+
         response = client.models.generate_content(
             model=MODEL_NAME,
             contents=user_prompt,
-            config={
-                "system_instruction": system_prompt,
-                "temperature": 0.7,
-                "response_mime_type": "application/json"
-            }
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt,
+
+                # Faster + more deterministic
+                temperature=0.3,
+
+                # Enough for our small JSON response
+                max_output_tokens=400,
+
+                # Force JSON response
+                response_mime_type="application/json"
+            )
         )
 
         ai_response = response.text.strip()
 
-        # Parse Gemma's JSON response
+        # -------------------------------------------------
+        # Parse JSON
+        # -------------------------------------------------
+
         try:
+
             cleaned = ai_response
 
-            # Remove markdown wrapper if model still adds one
             if cleaned.startswith("```"):
                 cleaned = cleaned.split("\n", 1)[1]
                 cleaned = cleaned.rsplit("```", 1)[0]
 
-            cleaned = cleaned.strip()
-
-            parsed = json.loads(cleaned)
+            parsed = json.loads(cleaned.strip())
 
             return jsonify({
                 "success": True,
@@ -182,15 +216,16 @@ def analyze():
             })
 
         except (json.JSONDecodeError, ValueError):
+
             return jsonify({
                 "success": True,
                 "analysis": {
                     "verdict": "RISKY SKIP",
                     "risk_score": 5,
-                    "short_reason": "AI couldn't format the response properly.",
+                    "short_reason": "Gemma returned an unexpected response.",
                     "detailed_analysis": ai_response,
                     "consequences": [
-                        "The AI response could not be parsed."
+                        "The AI response could not be formatted correctly."
                     ],
                     "tips": [
                         "Try submitting the request again."
@@ -199,17 +234,21 @@ def analyze():
             })
 
     except Exception as e:
+
         print(f"Gemma API error: {e}")
 
         return jsonify({
-            "error": "Unable to get a response from Gemma.",
-            "details": str(e)
-        }), 503
+            "error": "Gemma took too long to respond or encountered an error.",
+            "details": "Please try again."
+        }), 504
 
+
+# ---------------------------------------------------------
+# Health Check
+# ---------------------------------------------------------
 
 @app.route("/api/health", methods=["GET"])
 def health():
-    """Check whether the Gemma API is configured."""
 
     if client:
         return jsonify({
@@ -225,13 +264,18 @@ def health():
     }), 503
 
 
+# ---------------------------------------------------------
+# Local Development
+# ---------------------------------------------------------
+
 if __name__ == "__main__":
+
     print("")
-    print("  ===================================================")
+    print("===================================================")
     print("       ShouldISkipClass AI - v2.0")
     print("       Powered by Gemma")
     print("       Running at http://localhost:5000")
-    print("  ===================================================")
+    print("===================================================")
     print("")
 
     app.run(
