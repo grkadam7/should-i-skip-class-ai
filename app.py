@@ -6,9 +6,10 @@ import os
 
 app = Flask(__name__)
 
-# ---------------------------------------------------------
+
+# =========================================================
 # Google AI Studio / Gemma Configuration
-# ---------------------------------------------------------
+# =========================================================
 
 api_key = os.environ.get("GEMINI_API_KEY")
 
@@ -25,9 +26,9 @@ if api_key:
     )
 
 
-# ---------------------------------------------------------
+# =========================================================
 # System Prompt
-# ---------------------------------------------------------
+# =========================================================
 
 def build_system_prompt():
     return """You are SkipClass AI, a witty and brutally honest college attendance advisor.
@@ -70,12 +71,14 @@ Rules:
 - Be realistic and humorous.
 - Do not invent information.
 
+Keep the response concise.
+
 OUTPUT JSON ONLY."""
 
 
-# ---------------------------------------------------------
+# =========================================================
 # Input Sanitization
-# ---------------------------------------------------------
+# =========================================================
 
 def sanitize_input(text):
     if not isinstance(text, str):
@@ -99,9 +102,9 @@ def sanitize_input(text):
     return text[:1000]
 
 
-# ---------------------------------------------------------
+# =========================================================
 # User Prompt
-# ---------------------------------------------------------
+# =========================================================
 
 def build_user_prompt(data):
 
@@ -140,33 +143,39 @@ STUDENT
 Question:
 Should I skip this class?
 
-Give the JSON verdict."""
+Return the JSON verdict only."""
 
 
-# ---------------------------------------------------------
+# =========================================================
 # Main Page
-# ---------------------------------------------------------
+# =========================================================
 
 @app.route("/")
 def index():
     return render_template("index.html")
 
 
-# ---------------------------------------------------------
+# =========================================================
 # AI Analysis
-# ---------------------------------------------------------
+# =========================================================
 
 @app.route("/api/analyze", methods=["POST"])
 def analyze():
 
-    # Check whether API client is configured
+    # -----------------------------------------------------
+    # Check API configuration
+    # -----------------------------------------------------
+
     if not client:
         return jsonify({
             "error": "Gemma AI is not configured.",
             "details": "GEMINI_API_KEY is missing on the server."
         }), 503
 
-    # Read incoming JSON
+    # -----------------------------------------------------
+    # Read request data
+    # -----------------------------------------------------
+
     data = request.get_json(silent=True)
 
     if not data:
@@ -174,7 +183,6 @@ def analyze():
             "error": "No input data received."
         }), 400
 
-    # Build prompts
     system_prompt = build_system_prompt()
     user_prompt = build_user_prompt(data)
 
@@ -188,21 +196,29 @@ def analyze():
             model=MODEL_NAME,
             contents=user_prompt,
             config=types.GenerateContentConfig(
+
+                # System instructions
                 system_instruction=system_prompt,
 
-                # Lower temperature = more consistent output
-                temperature=0.3,
+                # More deterministic responses
+                temperature=0.2,
 
-                # Enough for our small JSON response
-                max_output_tokens=400,
+                # Small JSON response
+                max_output_tokens=300,
 
-                # Ask Gemma to return JSON
-                response_mime_type="application/json"
+                # Force JSON output
+                response_mime_type="application/json",
+
+                # Disable thinking so Gemma does not
+                # consume the output budget on reasoning
+                thinking_config=types.ThinkingConfig(
+                    thinking_budget=0
+                )
             )
         )
 
         # -------------------------------------------------
-        # Safely get Gemma response
+        # Safely retrieve response text
         # -------------------------------------------------
 
         ai_response = getattr(response, "text", None)
@@ -219,6 +235,8 @@ def analyze():
 
         ai_response = ai_response.strip()
 
+        print("Gemma response received successfully.")
+
         # -------------------------------------------------
         # Parse JSON
         # -------------------------------------------------
@@ -227,7 +245,7 @@ def analyze():
 
             cleaned = ai_response
 
-            # Remove Markdown code fences if Gemma adds them
+            # Remove Markdown code fences if present
             if cleaned.startswith("```"):
 
                 parts = cleaned.split("\n", 1)
@@ -239,41 +257,12 @@ def analyze():
 
             parsed = json.loads(cleaned.strip())
 
-            # -------------------------------------------------
-            # Basic validation
-            # -------------------------------------------------
-
-            required_fields = [
-                "verdict",
-                "risk_score",
-                "short_reason",
-                "detailed_analysis",
-                "consequences",
-                "tips"
-            ]
-
-            if not all(field in parsed for field in required_fields):
-
-                print("Gemma JSON missing required fields:")
-                print(parsed)
-
-                return jsonify({
-                    "error": "Gemma returned incomplete analysis.",
-                    "details": "Please try again."
-                }), 502
-
-            return jsonify({
-                "success": True,
-                "analysis": parsed
-            })
-
         except (json.JSONDecodeError, ValueError) as e:
 
             print("Gemma returned invalid JSON:")
             print(ai_response)
             print("JSON error:", e)
 
-            # Fallback response so frontend doesn't completely break
             return jsonify({
                 "success": True,
                 "analysis": {
@@ -290,11 +279,50 @@ def analyze():
                 }
             })
 
-    except Exception as e:
+        # -------------------------------------------------
+        # Validate required fields
+        # -------------------------------------------------
+
+        required_fields = [
+            "verdict",
+            "risk_score",
+            "short_reason",
+            "detailed_analysis",
+            "consequences",
+            "tips"
+        ]
+
+        missing_fields = [
+            field
+            for field in required_fields
+            if field not in parsed
+        ]
+
+        if missing_fields:
+
+            print("Gemma JSON missing fields:")
+            print(missing_fields)
+            print("Gemma output:", parsed)
+
+            return jsonify({
+                "error": "Gemma returned incomplete analysis.",
+                "details": "Please try again."
+            }), 502
 
         # -------------------------------------------------
-        # API / Network / Timeout error
+        # Successful response
         # -------------------------------------------------
+
+        return jsonify({
+            "success": True,
+            "analysis": parsed
+        })
+
+    # =====================================================
+    # API / Network / Timeout Error
+    # =====================================================
+
+    except Exception as e:
 
         print(f"Gemma API error: {e}")
 
@@ -304,9 +332,9 @@ def analyze():
         }), 504
 
 
-# ---------------------------------------------------------
+# =========================================================
 # Health Check
-# ---------------------------------------------------------
+# =========================================================
 
 @app.route("/api/health", methods=["GET"])
 def health():
@@ -325,9 +353,9 @@ def health():
     }), 503
 
 
-# ---------------------------------------------------------
+# =========================================================
 # Local Development
-# ---------------------------------------------------------
+# =========================================================
 
 if __name__ == "__main__":
 
