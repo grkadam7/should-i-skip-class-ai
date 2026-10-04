@@ -63,6 +63,7 @@ python app.py
 ```
 
 Open **http://localhost:5000** in your browser and start analyzing! 🎉
+live demo: **https://should-i-skip-class-ai.onrender.com/**
 
 ## 🛠️ Tech Stack
 
