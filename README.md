@@ -1,4 +1,4 @@
-# 🎓 ShouldISkipClass.ai V1 — Local / Privacy Edition
+# 🎓 ShouldISkipClass.ai
 
 **An open-source AI-powered college attendance advisor that runs 100% locally.**
 
@@ -30,7 +30,7 @@ The `main` branch is designed to run locally using **Gemma 3 4B + Ollama**.
 
 Your attendance, grades, timetable, and other academic information are sent only to the local Flask application and local Ollama instance for inference.
 
-## V2 — Hosted Edition
+## ☁️ V2 — Hosted Edition
 A separate v2-hosted branch contains an experimental hosted version designed for public deployment. This is the version deployed at https://should-i-skip-class-ai.onrender.com/. 
 - Hosted: Gemma 4 26B through Google AI Studio (set GOOGLE_API_KEY), with thinking set to minimal
 - No accounts, no database, no tracking. Profiles and plans live in the browser's IndexedDB. You can export, import or delete everything in one tap.
