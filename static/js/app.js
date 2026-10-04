@@ -37,15 +37,12 @@ document.addEventListener('DOMContentLoaded', function () {
             const response = await fetch('/api/health');
             const data = await response.json();
 
-            if (data.ollama_running && data.gemma_available) {
+            if (data.api_configured && data.gemma_available) {
                 statusDot.className = 'status-dot connected';
-                statusText.textContent = '🟢 Ollama + Gemma Ready';
-            } else if (data.ollama_running) {
-                statusDot.className = 'status-dot error';
-                statusText.textContent = '⚠️ Gemma model missing — run: ollama pull gemma3:4b';
+                statusText.textContent = '🟢 Gemma AI Ready';
             } else {
                 statusDot.className = 'status-dot error';
-                statusText.textContent = '🔴 Ollama disconnected — run: ollama serve';
+                statusText.textContent = '🔴 AI service not configured';
             }
         } catch (e) {
             statusDot.className = 'status-dot error';
