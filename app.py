@@ -34,31 +34,46 @@ Be humorous, relatable, and use college slangs naturally (bunk, proxy, sleep tax
 OUTPUT VALID JSON ONLY."""
 
 
+def sanitize_input(text):
+    """Basic sanitization to prevent prompt injection and limit length."""
+    if not isinstance(text, str):
+        return str(text)
+    forbidden = ["ignore previous", "system prompt", "instruction", "forget", "bypass", "jailbreak"]
+    text_lower = text.lower()
+    for word in forbidden:
+        if word in text_lower:
+            return "[REDACTED - INVALID INPUT]"
+    return text[:1000]  # Cap length to prevent context flooding
+
+
 def build_user_prompt(data):
-    """Build the user prompt from form data."""
+    """Build the user prompt from form data with sanitized inputs."""
+    safe_schedule = sanitize_input(data.get('day_schedule', ''))
+    safe_test = sanitize_input(data.get('test_details', 'Soon'))
+    
     return f"""Here is my detailed class & day schedule context:
 
 📊 ATTENDANCE STATUS:
-- Current attendance: {data['attendance']}%
-- Minimum required: {data['min_attendance']}%
-- Classes remaining this semester: {data['classes_remaining']}
+- Current attendance: {data.get('attendance', 0)}%
+- Minimum required: {data.get('min_attendance', 0)}%
+- Classes remaining this semester: {data.get('classes_remaining', 0)}
 
 🎓 COURSE & TEACHER INTEL:
-- Course Credits: {data['course_credits']} Credits (1-2 = Low weight, 3-4 = Core Heavy)
-- Teacher Strictness: {data['teacher_strictness']}/10
-- Proxy Friend Available?: {data['proxy_status']}
+- Course Credits: {sanitize_input(data.get('course_credits', ''))} Credits (1-2 = Low weight, 3-4 = Core Heavy)
+- Teacher Strictness: {data.get('teacher_strictness', 5)}/10
+- Proxy Friend Available?: {sanitize_input(data.get('proxy_status', ''))}
 
 ⏰ SCHEDULE & TIMING CONTEXT:
-- Class Time: {data['class_time']}
-- Day Schedule Context: {data['day_schedule']}
+- Class Time: {sanitize_input(data.get('class_time', ''))}
+- Day Schedule Context: {safe_schedule}
 
 📝 UPCOMING EVALUATIONS:
-- Test/Quiz coming up: {"Yes - " + data.get('test_details', 'Soon') if data['has_test'] else "No"}
+- Test/Quiz coming up: {"Yes - " + safe_test if data.get('has_test') else "No"}
 
 📚 CLASS TYPE & PERFORMANCE:
-- Class type: {data['class_type']}
-- Subject difficulty (for me): {data['difficulty']}/10
-- My current grade situation: {data['grade_situation']}
+- Class type: {sanitize_input(data.get('class_type', ''))}
+- Subject difficulty (for me): {data.get('difficulty', 5)}/10
+- My current grade situation: {sanitize_input(data.get('grade_situation', ''))}
 
 Should I skip this class? Analyze all the factors and give me your verdict."""
 
