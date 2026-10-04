@@ -212,7 +212,7 @@ def analyze():
                 # Disable thinking so Gemma does not
                 # consume the output budget on reasoning
                 thinking_config=types.ThinkingConfig(
-                    thinking_budget=0
+    thinking_level="minimal"
                 )
             )
         )
