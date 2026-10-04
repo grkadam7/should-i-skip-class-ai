@@ -63,6 +63,7 @@ python app.py
 ```
 
 Open **http://localhost:5000** in your browser and start analyzing! 🎉
+
 live demo: **https://should-i-skip-class-ai.onrender.com/**
 
 ## 🛠️ Tech Stack
@@ -77,7 +78,22 @@ live demo: **https://should-i-skip-class-ai.onrender.com/**
 
 ## 📸 Screenshots
 
-*Coming soon!*
+<table>
+  <tr>
+    <td align="center">
+      <img width="580" height="512" alt="image" src="https://github.com/user-attachments/assets/68ea0d12-6fda-411f-9a74-8020ee992ec4" />
+      <br><b>Attendance, Timetable & Schedule</b>
+    </td>
+    <td align="center">
+ <img width="574" height="494" alt="image" src="https://github.com/user-attachments/assets/f68ce374-2545-4adf-9838-5554c7bef2be" />
+      <br><b>Course & Proxy Options</b>
+    </td>
+    <td align="center">
+<img width="426" height="688" alt="image" src="https://github.com/user-attachments/assets/a66f6754-bede-4d23-a92d-0aff157bbdd8" />
+      <br><b>AI Verdict</b>
+    </td>
+  </tr>
+</table>
 
 ## 🏗️ How It Works
 
