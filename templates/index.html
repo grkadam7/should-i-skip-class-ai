@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShouldISkipClass.ai — College Attendance & Schedule Advisor</title>
+    <meta name="description" content="An open-source local AI advisor that weighs your attendance, timetable gaps, proxy options, and teacher strictness to tell you if you should bunk your next class.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- Background Gradient Glow -->
+    <div class="bg-animation">
+        <div class="bg-gradient"></div>
+    </div>
+
+    <!-- Header & Navigation -->
+    <header class="top-nav">
+        <div class="nav-container">
+            <div class="brand-logo">
+                <span class="logo-emoji">🎓</span>
+                <span class="brand-name">ShouldISkipClass<span class="brand-accent">.ai</span></span>
+            </div>
+            <div class="status-badge" id="statusBar">
+                <div class="status-dot" id="statusDot"></div>
+                <span class="status-text" id="statusText">Checking Gemma AI...</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="app-container">
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <h1 class="hero-title">Should You Skip Your Next Class?</h1>
+            <p class="hero-subtitle">100% Local & Private AI Attendance Advisor — Powered by Gemma</p>
+
+            <!-- Quick Scenario Presets -->
+            <div class="preset-wrapper">
+                <span class="preset-label">⚡ Quick Scenarios:</span>
+                <div class="preset-chips">
+                    <button type="button" class="chip" onclick="applyPreset('safe')">🎉 High % + Proxy Available</button>
+                    <button type="button" class="chip" onclick="applyPreset('morning')">🥱 8 AM Sleep Tax</button>
+                    <button type="button" class="chip" onclick="applyPreset('gap')">⏳ Huge 3-Hour Gap</button>
+                    <button type="button" class="chip" onclick="applyPreset('quiz')">🚨 Midterm Quiz Day</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Form & Analysis Grid -->
+        <div class="main-grid">
+            <!-- Left Side: Input Form -->
+            <form id="skipForm" class="form-container">
+
+                <!-- Card 1: Attendance Core -->
+                <div class="form-card">
+                    <div class="card-header">
+                        <span class="card-icon">📊</span>
+                        <h2>1. Attendance Status</h2>
+                    </div>
+                    <div class="input-grid-3">
+                        <div class="input-block">
+                            <label for="attendance">Current Attendance</label>
+                            <div class="input-affix">
+                                <input type="number" id="attendance" name="attendance" min="0" max="100" value="78" required>
+                                <span class="affix">%</span>
+                            </div>
+                        </div>
+                        <div class="input-block">
+                            <label for="minAttendance">Required Minimum</label>
+                            <div class="input-affix">
+                                <input type="number" id="minAttendance" name="min_attendance" min="0" max="100" value="75" required>
+                                <span class="affix">%</span>
+                            </div>
+                        </div>
+                        <div class="input-block">
+                            <label for="classesRemaining">Classes Left</label>
+                            <input type="number" id="classesRemaining" name="classes_remaining" min="1" max="200" value="20" required>
+                        </div>
+                    </div>
+
+                    <!-- Attendance Visual Gauge Bar -->
+                    <div class="attendance-visual">
+                        <div class="bar-track">
+                            <div class="bar-fill" id="attendanceFill"></div>
+                            <div class="bar-target" id="attendanceThreshold"></div>
+                        </div>
+                        <div class="bar-legend">
+                            <span>0%</span>
+                            <span id="attendanceHint" class="legend-status">78% (+3% buffer)</span>
+                            <span>100%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 2: Schedule & Timetable Context -->
+                <div class="form-card">
+                    <div class="card-header">
+                        <span class="card-icon">⏰</span>
+                        <h2>2. Timetable & Schedule Context</h2>
+                    </div>
+                    
+                    <div class="input-block">
+                        <label for="daySchedule">Full Day Timetable</label>
+                        <textarea id="daySchedule" name="day_schedule" placeholder="e.g.&#10;8 AM to 10 AM - ML&#10;&#10;10:00 AM to 12 PM - CS" rows="4" class="custom-textarea">8 AM to 10 AM - ML
+
+10:00 AM to 12 PM - CS</textarea>
+                    </div>
+
+                    <div class="input-block margin-top">
+                        <label for="classTime">Target Class (Which one to skip?)</label>
+                        <input type="text" id="classTime" name="class_time" value="8 AM to 10 AM - ML" placeholder="e.g. 8 AM to 10 AM - ML">
+                    </div>
+                </div>
+
+                <!-- Card 3: Course & Proxy Intel -->
+                <div class="form-card">
+                    <div class="card-header">
+                        <span class="card-icon">🤝</span>
+                        <h2>3. Course Weight & Proxy Options</h2>
+                    </div>
+
+                    <div class="input-grid-2">
+                        <div class="input-block">
+                            <label>Proxy Availability</label>
+                            <div class="pill-selector">
+                                <button type="button" class="pill active" data-value="Friend got me (100% Proxy)" data-target="proxyStatus">🤝 Homie Proxy</button>
+                                <button type="button" class="pill" data-value="Risky proxy (Teacher calls names)" data-target="proxyStatus">😬 Risky</button>
+                                <button type="button" class="pill" data-value="No proxy possible" data-target="proxyStatus">❌ No Proxy</button>
+                            </div>
+                            <input type="hidden" id="proxyStatus" name="proxy_status" value="Friend got me (100% Proxy)">
+                        </div>
+
+                        <div class="input-block">
+                            <label>Course Credits</label>
+                            <div class="pill-selector">
+                                <button type="button" class="pill" data-value="1-2 Credits (Elective/Lab)" data-target="courseCredits">🧪 1-2 Credits</button>
+                                <button type="button" class="pill active" data-value="3-4 Credits (Core Heavyweight)" data-target="courseCredits">📘 3-4 Core</button>
+                            </div>
+                            <input type="hidden" id="courseCredits" name="course_credits" value="3-4 Credits (Core Heavyweight)">
+                        </div>
+                    </div>
+
+                    <div class="input-grid-2 margin-top">
+                        <div class="input-block">
+                            <label for="teacherStrictness">Teacher Strictness (<span id="strictnessValue">5</span>/10)</label>
+                            <input type="range" id="teacherStrictness" name="teacher_strictness" min="1" max="10" value="5" class="range-slider">
+                        </div>
+
+                        <div class="input-block">
+                            <label for="difficulty">Subject Difficulty (<span id="difficultyValue">5</span>/10)</label>
+                            <input type="range" id="difficulty" name="difficulty" min="1" max="10" value="5" class="range-slider">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 4: Class Type & Evaluations -->
+                <div class="form-card">
+                    <div class="card-header">
+                        <span class="card-icon">📝</span>
+                        <h2>4. Class Type & Evaluations</h2>
+                    </div>
+
+                    <div class="input-grid-2">
+                        <div class="input-block">
+                            <label>Class Format</label>
+                            <div class="pill-selector">
+                                <button type="button" class="pill active" data-value="Lecture" data-target="classType">📖 Lecture</button>
+                                <button type="button" class="pill" data-value="Lab" data-target="classType">🧪 Lab</button>
+                                <button type="button" class="pill" data-value="Tutorial" data-target="classType">✏️ Tutorial</button>
+                            </div>
+                            <input type="hidden" id="classType" name="class_type" value="Lecture">
+                        </div>
+
+                        <div class="input-block">
+                            <label>Upcoming Test/Quiz?</label>
+                            <div class="pill-selector">
+                                <button type="button" class="pill" data-value="true" data-target="hasTest">Yes 😰</button>
+                                <button type="button" class="pill active" data-value="false" data-target="hasTest">No 😌</button>
+                            </div>
+                            <input type="hidden" id="hasTest" name="has_test" value="false">
+                        </div>
+                    </div>
+
+                    <div class="input-block margin-top conditional" id="testDetailsGroup" style="display:none;">
+                        <label for="testDetails">Test Details</label>
+                        <input type="text" id="testDetails" name="test_details" placeholder="e.g. Midterm quiz worth 15% marks">
+                    </div>
+
+                    <div class="input-block margin-top">
+                        <label>Your Standing</label>
+                        <div class="pill-selector">
+                            <button type="button" class="pill" data-value="Great" data-target="gradeSituation">🌟 Great</button>
+                            <button type="button" class="pill active" data-value="Average" data-target="gradeSituation">😐 Average</button>
+                            <button type="button" class="pill" data-value="Struggling" data-target="gradeSituation">😟 Struggling</button>
+                        </div>
+                        <input type="hidden" id="gradeSituation" name="grade_situation" value="Average">
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="analyze-btn" id="submitBtn">
+                    <span class="submit-text">Analyze With Gemma AI 🧠</span>
+                    <span class="submit-loading" style="display:none;">
+                        <span class="spinner"></span> Thinking...
+                    </span>
+                </button>
+            </form>
+
+            <!-- Right Side: AI Verdict Output -->
+            <aside class="results-container">
+                <div class="results-sticky">
+                    <!-- Placeholder state -->
+                    <div class="empty-state" id="emptyVerdict">
+                        <div class="empty-illustration">🔮</div>
+                        <h3>Ready for Analysis</h3>
+                        <p>Fill in your class info on the left and hit <strong>"Analyze With Gemma AI"</strong> to receive your verdict!</p>
+                    </div>
+
+                    <!-- Result Card -->
+                    <div class="verdict-card" id="resultSection" style="display:none;">
+                        <div class="verdict-banner" id="verdictHeader">
+                            <div class="verdict-icon" id="verdictEmoji">🎉</div>
+                            <h2 class="verdict-title" id="verdictText">SAFE TO SKIP!</h2>
+                            <p class="verdict-subtitle" id="verdictTagline"></p>
+                        </div>
+
+                        <!-- Risk Meter -->
+                        <div class="risk-section">
+                            <div class="risk-meta">
+                                <span>Risk Level</span>
+                                <span class="risk-badge" id="riskValue">3/10</span>
+                            </div>
+                            <div class="risk-bar-track">
+                                <div class="risk-bar-fill" id="riskFill"></div>
+                            </div>
+                        </div>
+
+                        <!-- Breakdown -->
+                        <div class="analysis-card">
+                            <h4>📋 AI Breakdown</h4>
+                            <p id="detailedAnalysis"></p>
+                        </div>
+
+                        <!-- Consequences & Tips -->
+                        <div class="grid-2-col">
+                            <div class="info-card warning">
+                                <h4>⚠️ Trade-offs</h4>
+                                <ul id="consequencesList"></ul>
+                            </div>
+                            <div class="info-card tip">
+                                <h4>💡 Pro Tips</h4>
+                                <ul id="tipsList"></ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>Built for Hacktoberfest 2026 — Powered by <strong>Gemma 3</strong> via <strong>Ollama</strong> (100% Local & Private)</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
