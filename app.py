@@ -159,12 +159,14 @@ def index():
 @app.route("/api/analyze", methods=["POST"])
 def analyze():
 
+    # Check whether API client is configured
     if not client:
         return jsonify({
             "error": "Gemma AI is not configured.",
             "details": "GEMINI_API_KEY is missing on the server."
         }), 503
 
+    # Read incoming JSON
     data = request.get_json(silent=True)
 
     if not data:
@@ -172,10 +174,15 @@ def analyze():
             "error": "No input data received."
         }), 400
 
+    # Build prompts
     system_prompt = build_system_prompt()
     user_prompt = build_user_prompt(data)
 
     try:
+
+        # -------------------------------------------------
+        # Send request to Gemma
+        # -------------------------------------------------
 
         response = client.models.generate_content(
             model=MODEL_NAME,
@@ -183,18 +190,34 @@ def analyze():
             config=types.GenerateContentConfig(
                 system_instruction=system_prompt,
 
-                # Faster + more deterministic
+                # Lower temperature = more consistent output
                 temperature=0.3,
 
                 # Enough for our small JSON response
                 max_output_tokens=400,
 
-                # Force JSON response
+                # Ask Gemma to return JSON
                 response_mime_type="application/json"
             )
         )
 
-        ai_response = response.text.strip()
+        # -------------------------------------------------
+        # Safely get Gemma response
+        # -------------------------------------------------
+
+        ai_response = getattr(response, "text", None)
+
+        if not ai_response:
+
+            print("Gemma returned no text.")
+            print("Gemma response:", response)
+
+            return jsonify({
+                "error": "Gemma returned an empty response.",
+                "details": "Please try again."
+            }), 502
+
+        ai_response = ai_response.strip()
 
         # -------------------------------------------------
         # Parse JSON
@@ -204,19 +227,53 @@ def analyze():
 
             cleaned = ai_response
 
+            # Remove Markdown code fences if Gemma adds them
             if cleaned.startswith("```"):
-                cleaned = cleaned.split("\n", 1)[1]
+
+                parts = cleaned.split("\n", 1)
+
+                if len(parts) > 1:
+                    cleaned = parts[1]
+
                 cleaned = cleaned.rsplit("```", 1)[0]
 
             parsed = json.loads(cleaned.strip())
+
+            # -------------------------------------------------
+            # Basic validation
+            # -------------------------------------------------
+
+            required_fields = [
+                "verdict",
+                "risk_score",
+                "short_reason",
+                "detailed_analysis",
+                "consequences",
+                "tips"
+            ]
+
+            if not all(field in parsed for field in required_fields):
+
+                print("Gemma JSON missing required fields:")
+                print(parsed)
+
+                return jsonify({
+                    "error": "Gemma returned incomplete analysis.",
+                    "details": "Please try again."
+                }), 502
 
             return jsonify({
                 "success": True,
                 "analysis": parsed
             })
 
-        except (json.JSONDecodeError, ValueError):
+        except (json.JSONDecodeError, ValueError) as e:
 
+            print("Gemma returned invalid JSON:")
+            print(ai_response)
+            print("JSON error:", e)
+
+            # Fallback response so frontend doesn't completely break
             return jsonify({
                 "success": True,
                 "analysis": {
@@ -234,6 +291,10 @@ def analyze():
             })
 
     except Exception as e:
+
+        # -------------------------------------------------
+        # API / Network / Timeout error
+        # -------------------------------------------------
 
         print(f"Gemma API error: {e}")
 
